@@ -11,8 +11,13 @@ const PORT = process.env.PORT || 3000;
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || '86008ef6d11a42328873bcb5646ce071.z7Kqc6VLVk1gfbSb';
 
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(__dirname));
 
+// Serve static index.html at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// API endpoint
 app.post('/api/chat', (req, res) => {
   try {
     const { model, messages, stream } = req.body;
