@@ -74,8 +74,12 @@ app.post('/api/chat', (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀 WeMoreAI 智能虚拟实验生成平台`);
-  console.log(`   本地访问: http://localhost:${PORT}`);
-  console.log(`   按 Ctrl+C 停止服务\n`);
-});
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🚀 WeMoreAI 智能虚拟实验生成平台`);
+    console.log(`   本地访问: http://localhost:${PORT}`);
+    console.log(`   按 Ctrl+C 停止服务\n`);
+  });
+}
+
+module.exports = app;
