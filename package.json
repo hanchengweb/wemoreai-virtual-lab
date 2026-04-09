@@ -1,0 +1,12 @@
+{
+  "name": "wemoreai-virtual-lab",
+  "version": "1.0.0",
+  "description": "WeMoreAI 智能虚拟实验生成平台",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

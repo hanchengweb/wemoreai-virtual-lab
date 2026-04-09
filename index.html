@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeMoreAI · 智能虚拟实验生成平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Noto Sans SC"', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; }
+    .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    .glass-dark { background: rgba(15,23,42,0.8); backdrop-filter: blur(20px); }
+    .gradient-text { background: linear-gradient(135deg, #4F46E5, #7C3AED, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .gradient-btn { background: linear-gradient(135deg, #4F46E5, #7C3AED); }
+    .gradient-btn:hover { background: linear-gradient(135deg, #4338CA, #6D28D9); }
+    .float-anim { animation: float 6s ease-in-out infinite; }
+    .float-anim-delay { animation: float 6s ease-in-out 2s infinite; }
+    .float-anim-delay2 { animation: float 6s ease-in-out 4s infinite; }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+    .fade-in-up-delay { animation: fadeInUp 0.6s ease-out 0.2s forwards; opacity:0; }
+    .fade-in-up-delay2 { animation: fadeInUp 0.6s ease-out 0.4s forwards; opacity:0; }
+    .sidebar-item { transition: all 0.2s; }
+    .sidebar-item:hover { background: rgba(79,70,229,0.08); }
+    .sidebar-item.active { background: rgba(79,70,229,0.12); color: #4F46E5; font-weight: 600; }
+    .overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; }
+    .overlay.active { display:flex; }
+    .dialog { background:white; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); max-height:85vh; overflow:hidden; display:flex; flex-direction:column; }
+    .tag { display:inline-flex; align-items:center; padding:4px 12px; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.2s; border:1px solid #e2e8f0; }
+    .tag:hover { border-color:#a5b4fc; color:#4F46E5; }
+    .tag.active { background:#4F46E5; color:white; border-color:#4F46E5; }
+    .quick-prompt { padding:6px 12px; border-radius:8px; font-size:12px; color:#64748b; background:#f8fafc; border:1px solid #e2e8f0; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .quick-prompt:hover { background:#eef2ff; border-color:#a5b4fc; color:#4F46E5; }
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
+    .generating-pulse { animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+  </style>
+</head>
+<body class="bg-white text-slate-800">
+
+<!-- ==================== PORTAL PAGE ==================== -->
+<div id="portal-page">
+  <!-- Nav -->
+  <nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-slate-200/60">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl gradient-btn flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+        </div>
+        <span class="font-bold text-lg text-slate-800">WeMoreAI</span>
+        <span class="text-xs text-slate-400 hidden sm:inline">智能虚拟实验生成平台</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="showLoginDialog()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">登录</button>
+        <button onclick="showLoginDialog()" class="px-5 py-2 text-sm font-medium text-white gradient-btn rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all">立即体验</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="relative pt-32 pb-20 px-6 overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50"></div>
+    <div class="absolute top-20 left-10 w-72 h-72 bg-indigo-200/30 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-10 right-10 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl"></div>
+    <div class="relative max-w-4xl mx-auto text-center">
+      <div class="fade-in-up">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-sm text-indigo-600 mb-6">
+          <span class="w-2 h-2 bg-indigo-500 rounded-full"></span>
+          基于大语言模型 · AI 驱动
+        </div>
+      </div>
+      <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 fade-in-up">
+        <span class="gradient-text">智能虚拟实验</span><br>
+        <span class="text-slate-800">生成平台</span>
+      </h1>
+      <p class="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-8 fade-in-up-delay">
+        用自然语言描述实验需求，AI 自动生成专业级虚拟仿真实验。<br class="hidden md:block">
+        覆盖物理、化学、生物、医学等 13 个学科领域。
+      </p>
+      <div class="flex flex-wrap justify-center gap-3 mb-10 fade-in-up-delay2">
+        <button onclick="showLoginDialog()" class="px-8 py-3 text-base font-medium text-white gradient-btn rounded-2xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all">
+          开始创建实验
+        </button>
+        <a href="#features" class="px-8 py-3 text-base font-medium text-slate-600 bg-white border border-slate-200 rounded-2xl hover:border-indigo-200 hover:text-indigo-600 transition-all">
+          了解更多
+        </a>
+      </div>
+      <div class="flex flex-wrap justify-center gap-2 fade-in-up-delay2">
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">物理仿真</span>
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">化学反应</span>
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">生物模拟</span>
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">医学实验</span>
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">数据可视化</span>
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">电路仿真</span>
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">心理学</span>
+        <span class="px-3 py-1.5 bg-white/80 border border-slate-200/80 rounded-lg text-xs text-slate-500 shadow-sm">经济学</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-20 px-6 bg-white">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-14">
+        <h2 class="text-3xl font-bold text-slate-800 mb-3">核心能力</h2>
+        <p class="text-slate-500">AI 驱动的虚拟实验生成，让教学更生动</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="p-6 rounded-2xl border border-slate-100 hover:border-indigo-100 hover:shadow-lg hover:shadow-indigo-500/5 transition-all group">
+          <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center mb-4 group-hover:bg-indigo-100 transition-colors">
+            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">AI 智能生成</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">基于大语言模型，用自然语言描述实验需求，AI 自动生成完整的交互式仿真实验代码。</p>
+        </div>
+        <div class="p-6 rounded-2xl border border-slate-100 hover:border-purple-100 hover:shadow-lg hover:shadow-purple-500/5 transition-all group">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">多学科覆盖</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">支持物理、化学、生物、数学、医学、工程学等 13 个学科领域，满足不同教学需求。</p>
+        </div>
+        <div class="p-6 rounded-2xl border border-slate-100 hover:border-cyan-100 hover:shadow-lg hover:shadow-cyan-500/5 transition-all group">
+          <div class="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center mb-4 group-hover:bg-cyan-100 transition-colors">
+            <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">实时预览</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">生成即可见，支持参数实时调节、播放暂停控制，所见即所得的实验体验。</p>
+        </div>
+        <div class="p-6 rounded-2xl border border-slate-100 hover:border-emerald-100 hover:shadow-lg hover:shadow-emerald-500/5 transition-all group">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4 group-hover:bg-emerald-100 transition-colors">
+            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">一键导出</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">生成的实验为单文件 HTML，无需安装任何软件，浏览器打开即可运行和分享。</p>
+        </div>
+        <div class="p-6 rounded-2xl border border-slate-100 hover:border-amber-100 hover:shadow-lg hover:shadow-amber-500/5 transition-all group">
+          <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-4 group-hover:bg-amber-100 transition-colors">
+            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">案例共享</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">学校案例库支持教师共建共享，优秀实验经审核后全校可用，促进教学资源沉淀。</p>
+        </div>
+        <div class="p-6 rounded-2xl border border-slate-100 hover:border-rose-100 hover:shadow-lg hover:shadow-rose-500/5 transition-all group">
+          <div class="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center mb-4 group-hover:bg-rose-100 transition-colors">
+            <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">参数可调</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">实验参数支持滑块、输入框实时调节，学生可以自由探索不同条件下的实验结果。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Subjects -->
+  <section class="py-20 px-6 bg-slate-50">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-14">
+        <h2 class="text-3xl font-bold text-slate-800 mb-3">覆盖学科</h2>
+        <p class="text-slate-500">13 个学科领域，满足多学科虚拟仿真教学需求</p>
+      </div>
+      <div id="portal-subjects" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="py-20 px-6 bg-white">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-14">
+        <h2 class="text-3xl font-bold text-slate-800 mb-3">使用流程</h2>
+        <p class="text-slate-500">三步完成虚拟实验创建</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl gradient-btn flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
+            <span class="text-2xl font-bold text-white">1</span>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">描述需求</h3>
+          <p class="text-sm text-slate-500">用自然语言描述你想要的虚拟实验，选择学科分类</p>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/20">
+            <span class="text-2xl font-bold text-white">2</span>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">AI 生成</h3>
+          <p class="text-sm text-slate-500">AI 自动生成完整的交互式仿真实验，实时流式输出</p>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-cyan-500/20">
+            <span class="text-2xl font-bold text-white">3</span>
+          </div>
+          <h3 class="font-semibold text-slate-800 mb-2">预览导出</h3>
+          <p class="text-sm text-slate-500">实时预览实验效果，调优参数后一键导出 HTML 文件</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-20 px-6 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600">
+    <div class="max-w-3xl mx-auto text-center">
+      <h2 class="text-3xl font-bold text-white mb-4">开始创建您的第一个虚拟实验</h2>
+      <p class="text-indigo-100 mb-8">无需编程基础，用自然语言即可生成专业级虚拟仿真实验</p>
+      <button onclick="showLoginDialog()" class="px-8 py-3 text-base font-medium text-indigo-600 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all">
+        免费体验
+      </button>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-8 px-6 bg-slate-900 text-center">
+    <p class="text-slate-400 text-sm">© 2026 WeMoreAI · 微末智学 · 智能虚拟实验生成平台</p>
+  </footer>
+</div>
+
+<!-- ==================== APP PAGE ==================== -->
+<div id="app-page" class="hidden h-screen flex flex-col">
+  <!-- App Navbar -->
+  <nav class="h-14 border-b border-slate-200/80 bg-white flex-shrink-0 flex items-center px-4 gap-2 z-40">
+    <div class="flex items-center gap-2 mr-4">
+      <div class="w-8 h-8 rounded-lg gradient-btn flex items-center justify-center shadow">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+      </div>
+      <span class="font-bold text-sm text-slate-800">WeMoreAI</span>
+    </div>
+    <button onclick="handleNewExperiment()" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      新建
+    </button>
+    <button onclick="toggleDialog('examples')" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      示例库
+    </button>
+    <button onclick="toggleDialog('caseLibrary')" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+      案例库
+    </button>
+    <button onclick="toggleDialog('history')" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      历史
+    </button>
+    <button onclick="toggleDialog('help')" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      帮助
+    </button>
+    <div class="flex-1"></div>
+    <div id="user-info" class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg gradient-btn flex items-center justify-center text-white text-xs font-bold" id="user-avatar">A</div>
+      <span class="text-xs text-slate-600" id="user-name-display">管理员</span>
+      <button onclick="handleLogout()" class="px-2 py-1 text-xs text-slate-400 hover:text-red-500 transition-colors" title="退出登录">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      </button>
+    </div>
+    <button id="admin-btn" onclick="toggleDialog('userManagement')" class="hidden px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded-lg transition-all flex items-center gap-1">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      管理
+    </button>
+  </nav>
+
+  <!-- App Body -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside id="app-sidebar" class="w-52 border-r border-slate-200/80 bg-slate-50/50 flex flex-col flex-shrink-0 overflow-y-auto">
+      <div class="px-4 pt-4 pb-2">
+        <span class="text-[10px] text-slate-400 uppercase tracking-wider font-medium">学科领域</span>
+      </div>
+      <nav id="sidebar-categories" class="flex-1 px-2 space-y-0.5"></nav>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col min-w-0">
+      <!-- Input Panel -->
+      <div id="input-panel" class="border-b border-slate-200/80 bg-white p-4 flex-shrink-0">
+        <!-- 用户输入 -->
+        <div class="flex gap-3">
+          <div class="flex-1">
+            <textarea id="prompt-input" rows="2" placeholder="简单描述你想要的虚拟实验，例如：单摆运动仿真" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all placeholder:text-slate-400"></textarea>
+          </div>
+          <button id="optimize-btn" onclick="handleOptimizePrompt()" class="px-5 py-3 bg-indigo-100 text-indigo-600 rounded-xl text-sm font-medium hover:bg-indigo-200 transition-all flex items-center gap-2 whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            优化提示词
+          </button>
+        </div>
+        
+        <!-- AI生成的优化提示词 -->
+        <div id="optimized-prompt-container" class="hidden mt-3">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-xs font-medium text-indigo-600 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+              AI优化后的提示词（可编辑）
+            </span>
+          </div>
+          <textarea id="optimized-prompt" rows="3" class="w-full px-4 py-3 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"></textarea>
+        </div>
+        
+        <!-- 生成按钮 -->
+        <div class="mt-3">
+          <button id="generate-btn" onclick="handleGenerate()" class="w-full px-6 py-3 gradient-btn text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            生成实验
+          </button>
+        </div>
+        
+        <!-- Quick prompts -->
+        <div id="quick-prompts" class="flex flex-wrap gap-2 mt-3"></div>
+        <!-- Category tags -->
+        <div id="category-tags" class="flex flex-wrap gap-2 mt-2"></div>
+      </div>
+
+      <!-- Preview Panel -->
+      <div id="preview-panel" class="flex-1 flex flex-col min-h-0">
+        <!-- Preview toolbar -->
+        <div id="preview-toolbar" class="h-11 border-b border-slate-200/80 bg-white flex items-center px-4 gap-1 flex-shrink-0">
+          <button id="btn-preview" onclick="setPreviewMode('preview')" class="px-3 py-1 text-xs font-medium rounded-lg transition-all bg-indigo-50 text-indigo-600">预览</button>
+          <button id="btn-code" onclick="setPreviewMode('code')" class="px-3 py-1 text-xs font-medium rounded-lg transition-all text-slate-500 hover:bg-slate-100">代码</button>
+          <div class="flex-1"></div>
+          <button onclick="handleDownload()" class="px-3 py-1 text-xs font-medium text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all flex items-center gap-1" title="下载 HTML">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            下载
+          </button>
+          <button onclick="handleFullscreen()" class="px-3 py-1 text-xs font-medium text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1" title="全屏预览">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            全屏
+          </button>
+          <button onclick="handleSaveToCase()" class="px-3 py-1 text-xs font-medium text-slate-500 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-all flex items-center gap-1" title="保存到案例库">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            收藏
+          </button>
+        </div>
+        <!-- Preview content -->
+        <div id="preview-content" class="flex-1 relative overflow-hidden bg-slate-50">
+          <!-- Empty state -->
+          <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center">
+            <div class="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+              <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            </div>
+            <h3 class="text-base font-medium text-slate-400 mb-1">开始创建虚拟实验</h3>
+            <p class="text-sm text-slate-300">在上方输入实验描述，或从示例库中选择</p>
+          </div>
+          <!-- Generating state -->
+          <div id="generating-state" class="absolute inset-0 flex flex-col items-center justify-center hidden">
+            <div class="w-16 h-16 rounded-2xl gradient-btn flex items-center justify-center mb-4 generating-pulse">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <h3 class="text-base font-medium text-indigo-600 mb-1">AI 正在生成实验...</h3>
+            <p class="text-sm text-slate-400" id="generating-status">正在调用大模型</p>
+          </div>
+          <!-- Iframe preview -->
+          <iframe id="preview-iframe" class="absolute inset-0 w-full h-full border-0 bg-white hidden" sandbox="allow-scripts allow-same-origin" title="实验预览"></iframe>
+          <!-- Code view -->
+          <div id="code-view" class="absolute inset-0 overflow-auto p-4 bg-slate-900 hidden">
+            <pre class="text-xs leading-relaxed font-mono text-green-400 whitespace-pre-wrap"><code id="code-content"></code></pre>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ==================== DIALOGS ==================== -->
+
+<!-- Login Dialog -->
+<div id="login-dialog" class="overlay">
+  <div class="dialog w-full max-w-md mx-4">
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-slate-800">登录平台</h2>
+        <button onclick="toggleDialog('login')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-medium text-slate-700 mb-1.5 block">用户名</label>
+          <input id="login-username" type="text" placeholder="请输入用户名" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700 mb-1.5 block">密码</label>
+          <input id="login-password" type="password" placeholder="请输入密码" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400" onkeydown="if(event.key==='Enter')handleLogin()">
+        </div>
+        <div id="login-error" class="text-sm text-red-500 hidden"></div>
+        <button onclick="handleLogin()" class="w-full py-2.5 gradient-btn text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all">
+          登录
+        </button>
+        <p class="text-xs text-slate-400 text-center">默认管理员: admin / admin123</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Examples Dialog -->
+<div id="examples-dialog" class="overlay">
+  <div class="dialog w-full max-w-4xl mx-4">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">示例库</h2>
+        <p class="text-xs text-slate-400 mt-0.5">选择一个预设实验快速体验</p>
+      </div>
+      <button onclick="toggleDialog('examples')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto" style="max-height:60vh">
+      <div id="examples-filter" class="flex flex-wrap gap-2 mb-4"></div>
+      <div id="examples-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Case Library Dialog -->
+<div id="caseLibrary-dialog" class="overlay">
+  <div class="dialog w-full max-w-4xl mx-4">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">案例库</h2>
+        <p class="text-xs text-slate-400 mt-0.5">管理和浏览实验案例</p>
+      </div>
+      <button onclick="toggleDialog('caseLibrary')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto" style="max-height:60vh">
+      <div class="flex gap-2 mb-4">
+        <button id="case-tab-my" onclick="switchCaseTab('my')" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-indigo-50 text-indigo-600">我的案例</button>
+        <button id="case-tab-school" onclick="switchCaseTab('school')" class="px-4 py-1.5 text-sm font-medium rounded-lg text-slate-500 hover:bg-slate-100">学校案例</button>
+      </div>
+      <div id="case-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- History Dialog -->
+<div id="history-dialog" class="overlay">
+  <div class="dialog w-full max-w-3xl mx-4">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">生成历史</h2>
+        <p class="text-xs text-slate-400 mt-0.5">查看之前生成的实验</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="clearHistory()" class="px-3 py-1 text-xs text-red-500 hover:bg-red-50 rounded-lg transition-colors">清空</button>
+        <button onclick="toggleDialog('history')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="p-6 overflow-y-auto" style="max-height:60vh">
+      <div id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- User Management Dialog -->
+<div id="userManagement-dialog" class="overlay">
+  <div class="dialog w-full max-w-3xl mx-4">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">用户管理</h2>
+        <p class="text-xs text-slate-400 mt-0.5">管理系统用户（仅管理员）</p>
+      </div>
+      <button onclick="toggleDialog('userManagement')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto" style="max-height:60vh">
+      <div id="user-management-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Help Dialog -->
+<div id="help-dialog" class="overlay">
+  <div class="dialog w-full max-w-lg mx-4">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      <h2 class="text-lg font-bold text-slate-800">使用帮助</h2>
+      <button onclick="toggleDialog('help')" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto" style="max-height:60vh">
+      <div class="space-y-4 text-sm text-slate-600">
+        <div>
+          <h3 class="font-semibold text-slate-800 mb-1">如何创建虚拟实验？</h3>
+          <p>在输入框中用自然语言描述你想要的实验，选择学科分类，点击"生成实验"按钮。AI 会自动生成完整的交互式仿真实验。</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-800 mb-1">如何调优生成的实验？</h3>
+          <p>生成后可以在预览区查看效果。如果需要修改，在输入框中描述修改需求（如"把背景改成深色"、"增加一个温度参数"），再次点击生成即可。</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-800 mb-1">如何保存和导出？</h3>
+          <p>点击工具栏的"收藏"按钮保存到案例库，点击"下载"按钮导出为 HTML 文件。导出的文件可以在任何浏览器中直接打开。</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-800 mb-1">支持哪些学科？</h3>
+          <p>目前支持物理学、化学、生物学、数学、工程学、电子电路、地理天文、医学、计算机、环境科学、材料科学、心理学、经济学共 13 个学科领域。</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-800 mb-1">生成速度慢怎么办？</h3>
+          <p>生成时间取决于实验复杂度和模型响应速度。简单实验通常 10-20 秒，复杂实验可能需要 30-60 秒。请耐心等待，生成过程中会实时显示进度。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+// ===== DATA =====
+const CATEGORIES = [
+  { id:'physics', name:'物理学', icon:'⚛️', color:'#3b82f6', desc:'力学、电磁学、光学、热学等物理现象仿真' },
+  { id:'chemistry', name:'化学', icon:'🧪', color:'#10b981', desc:'化学反应、分子结构、实验过程仿真' },
+  { id:'biology', name:'生物学', icon:'🧬', color:'#f59e0b', desc:'细胞结构、生态系统、生物过程仿真' },
+  { id:'mathematics', name:'数学', icon:'📐', color:'#8b5cf6', desc:'函数可视化、统计分析、几何图形仿真' },
+  { id:'engineering', name:'工程学', icon:'⚙️', color:'#ef4444', desc:'机械结构、流体力学、热传导仿真' },
+  { id:'electronics', name:'电子电路', icon:'💻', color:'#06b6d4', desc:'电路仿真、信号处理、电子元件仿真' },
+  { id:'geography', name:'地理天文', icon:'🌍', color:'#84cc16', desc:'地形模拟、天体运行、气候模型仿真' },
+  { id:'medicine', name:'医学', icon:'🏥', color:'#ec4899', desc:'生理过程、病理机制、医学实验仿真' },
+  { id:'computer', name:'计算机', icon:'💾', color:'#6366f1', desc:'算法可视化、数据结构、网络协议仿真' },
+  { id:'environment', name:'环境科学', icon:'🌱', color:'#22c55e', desc:'生态模型、污染扩散、气候变化仿真' },
+  { id:'materials', name:'材料科学', icon:'💎', color:'#f97316', desc:'晶体结构、材料性能、相变过程仿真' },
+  { id:'psychology', name:'心理学', icon:'🧠', color:'#a855f7', desc:'认知实验、心理测量、行为分析仿真' },
+  { id:'economics', name:'经济学', icon:'📈', color:'#14b8a6', desc:'市场模型、供需关系、宏观经济仿真' }
+];
+
+const QUICK_PROMPTS = {
+  physics: ['创建一个单摆运动仿真，可调节摆长和重力加速度','模拟抛体运动的轨迹，显示速度和加速度变化','展示简谐波的传播和干涉现象'],
+  chemistry: ['模拟酸碱中和滴定实验，显示pH变化曲线','展示化学反应速率与温度的关系','模拟理想气体状态方程PV=nRT'],
+  biology: ['模拟细胞有丝分裂过程','展示DNA双螺旋结构和复制过程','模拟光合作用的光反应和暗反应'],
+  mathematics: ['展示正态分布的概率密度函数','可视化函数导数的几何意义','模拟蒙特卡洛方法估算圆周率'],
+  medicine: ['模拟肺水肿的病理生理过程','展示心脏血液循环系统','模拟药物在体内的药代动力学'],
+  default: ['创建一个交互式物理仿真实验','模拟一个化学反应过程','展示一个生物学过程']
+};
+
+const EXAMPLES = [
+  { id:'1', title:'单摆运动', category:'physics', desc:'模拟单摆运动，可调节摆长和重力加速度', prompt:'创建一个单摆运动仿真，可调节摆长和重力加速度，实时显示周期和角度变化' },
+  { id:'2', title:'抛体运动', category:'physics', desc:'模拟抛体运动轨迹', prompt:'模拟抛体运动的轨迹，显示速度和加速度变化曲线，可调节初速度和角度' },
+  { id:'3', title:'波的干涉', category:'physics', desc:'展示简谐波的传播和干涉', prompt:'展示简谐波的传播和干涉现象，可调节波长和频率' },
+  { id:'4', title:'酸碱滴定', category:'chemistry', desc:'模拟酸碱中和滴定实验', prompt:'模拟酸碱中和滴定实验，显示pH变化曲线和指示剂颜色变化' },
+  { id:'5', title:'气体状态方程', category:'chemistry', desc:'模拟理想气体状态方程', prompt:'模拟理想气体状态方程PV=nRT，分子运动动画，可调节温度和体积' },
+  { id:'6', title:'化学平衡', category:'chemistry', desc:'模拟化学平衡移动', prompt:'模拟化学平衡的移动过程，可调节温度和浓度，展示勒夏特列原理' },
+  { id:'7', title:'细胞分裂', category:'biology', desc:'模拟细胞有丝分裂', prompt:'模拟细胞有丝分裂过程，分期显示前期、中期、后期、末期' },
+  { id:'8', title:'DNA复制', category:'biology', desc:'展示DNA双螺旋结构', prompt:'展示DNA双螺旋结构和复制过程，碱基配对动画' },
+  { id:'9', title:'光合作用', category:'biology', desc:'模拟光合作用过程', prompt:'模拟光合作用的光反应和暗反应，能量转换可视化' },
+  { id:'10', title:'正态分布', category:'mathematics', desc:'展示正态分布概率密度', prompt:'展示正态分布的3D概率密度函数，可调节均值和标准差' },
+  { id:'11', title:'导数可视化', category:'mathematics', desc:'可视化函数导数的几何意义', prompt:'可视化函数导数的几何意义，切线动态变化' },
+  { id:'12', title:'蒙特卡洛', category:'mathematics', desc:'蒙特卡洛方法估算圆周率', prompt:'模拟蒙特卡洛方法估算圆周率，随机点分布' },
+  { id:'13', title:'桥梁受力', category:'engineering', desc:'模拟桥梁结构受力分析', prompt:'模拟桥梁结构的受力分析，桁架内力计算' },
+  { id:'14', title:'伯努利原理', category:'engineering', desc:'展示流体力学伯努利原理', prompt:'展示流体力学中的伯努利原理，流速与压强关系' },
+  { id:'15', title:'热传导', category:'engineering', desc:'模拟热传导过程', prompt:'模拟一维热传导过程，可调节材料参数和边界条件' },
+  { id:'16', title:'电路仿真', category:'electronics', desc:'模拟简单电路', prompt:'模拟串联和并联电路，可调节电阻和电压，实时显示电流' },
+  { id:'17', title:'RC电路', category:'electronics', desc:'模拟RC电路充放电', prompt:'模拟RC电路的充放电过程，展示电压和电流随时间变化' },
+  { id:'18', title:'太阳系', category:'geography', desc:'模拟太阳系行星运动', prompt:'模拟太阳系行星运动，展示开普勒定律' },
+  { id:'19', title:'水循环', category:'geography', desc:'模拟水循环过程', prompt:'模拟自然界水循环过程，蒸发、凝结、降水、径流' },
+  { id:'20', title:'肺水肿仿真', category:'medicine', desc:'模拟肺水肿病理生理过程', prompt:'创建肺水肿病理生理演示系统，展示液体在肺泡内的积聚过程，包含三栏布局：左侧控制台、中间仿真区、右侧教学指南和实时数据' },
+  { id:'21', title:'血液循环', category:'medicine', desc:'展示心脏血液循环', prompt:'展示心脏血液循环系统，模拟心脏泵血过程和血液在全身的流动' },
+  { id:'22', title:'斯特鲁普效应', category:'psychology', desc:'经典认知心理学实验', prompt:'创建斯特鲁普效应实验，显示颜色和文字不一致的单词，测量反应时间' },
+  { id:'23', title:'记忆曲线', category:'psychology', desc:'艾宾浩斯遗忘曲线', prompt:'创建艾宾浩斯遗忘曲线仿真，展示记忆随时间的衰减过程' },
+  { id:'24', title:'供需均衡', category:'economics', desc:'市场供需关系仿真', prompt:'创建供需均衡仿真，显示供给曲线和需求曲线，可调节价格和数量' }
+];
+
+const SYSTEM_PROMPT = `你是一个专业的虚拟仿真实验生成专家。你的任务是根据用户的自然语言描述，生成完整的、可运行的单文件 HTML 虚拟仿真实验。
+
+## 生成规范
+
+1. **单文件 HTML**：所有代码（HTML、CSS、JavaScript）必须内联在一个文件中，代码量不少于 3000 字符，确保内容充实、功能完整
+
+2. **技术栈**：
+   - **优先使用 SVG 绘制图形**（比 Canvas 更清晰、可缩放、易交互）
+   - 使用 Tailwind CSS (CDN引入: <script src="https://cdn.tailwindcss.com"><\/script>) 进行样式设计
+   - 动画使用 CSS animation 或 requestAnimationFrame
+   - 数据可视化可使用 Chart.js (CDN引入)
+
+3. **SVG 图形规范**（重点）：
+   - 使用 <svg viewBox="0 0 width height"> 定义坐标系
+   - **必须使用渐变填充**：linearGradient（线性渐变）或 radialGradient（径向渐变）
+   - **禁止大面积纯色填充**，所有形状必须使用渐变增加立体感
+   - 渐变定义放在 <defs> 中，多色渐变 stop 至少 2-3 个颜色
+   - 基础形状：
+     * <rect x="" y="" width="" height="" rx="" ry=""/> 矩形（圆角用rx/ry）
+     * <circle cx="" cy="" r=""/> 圆形
+     * <ellipse cx="" cy="" rx="" ry=""/> 椭圆
+     * <line x1="" y1="" x2="" y2=""/> 线段
+     * <path d="M x y L x y ..."/> 路径（M=移动,L=直线,C=曲线）
+   - 动画方式：
+     * CSS: transition, @keyframes
+     * JS: requestAnimationFrame 更新 transform 或 cx/cy 等属性
+     * 不推荐 SMIL (<animate>)
+   - 样式：用 class 引用 Tailwind 或内联 style
+   - 交互：给 SVG 元素加 onclick、addEventListener
+   - 文本：<text x="" y="" text-anchor="middle">文字</text>
+   - 组：<g transform="translate(x,y)">包裹多个元素整体变换</g>
+
+4. **布局规范**：
+   - **推荐三栏布局**：
+     * 左侧（20-25%）：参数控制面板，滑块、按钮、输入框
+     * 中间（50-60%）：SVG 仿真区，核心可视化区域
+     * 右侧（20-25%）：实时数据面板，数值显示、图表、状态指示
+   - 使用 flex 或 grid 实现响应式三栏布局
+   - 各栏之间有明显分隔线或背景色区分
+
+5. **动画要求**（强制）：
+   - **关键元素必须有动画效果**，完全静态的页面不合格
+   - 推荐动画类型：
+     * 脉动动画（pulse）：心跳式缩放，用于重要节点或信号
+     * 流动动画（flow）：虚线流动、粒子移动，用于表示能量/物质传输
+     * 旋转动画（rotate）：齿轮、循环过程
+     * 闪烁动画（glow）：发光效果，用于高亮或警告
+     * 位移动画：物体运动、波形传播
+   - 使用 CSS @keyframes 定义动画，animation 属性控制
+   - 动画要有意义，与物理/化学/生物过程对应
+
+6. **UI风格**：明亮主题，专业科研感
+   - 背景色：渐变浅色背景（蓝白、青白渐变）
+   - 强调色：蓝色/青色系
+   - 文字：深色，清晰可读
+   - 卡片式布局，圆角，阴影
+
+7. **交互功能**：
+   - 参数实时调节（滑块、输入框）
+   - 播放/暂停/重置控制
+   - 数据实时显示和图表
+   - SVG 元素可点击、悬停提示
+
+8. **响应式**：适配不同屏幕尺寸
+
+9. **代码质量**：注释清晰，变量命名规范，逻辑清晰，代码量 >= 3000 字符
+
+## 输出格式
+
+直接输出完整的 HTML 代码，以 <!DOCTYPE html> 开头，不要添加任何额外的说明文字或 markdown 代码块标记。`;
+
+// ===== STATE =====
+let state = {
+  user: null,
+  selectedCategory: null,
+  prompt: '',
+  isGenerating: false,
+  currentExperiment: null,
+  previewMode: 'preview',
+  history: [],
+  userCases: [],
+  schoolCases: [],
+  userList: [
+    { id:'1', username:'admin', password:'admin123', name:'系统管理员', role:'admin', college:'信息中心' },
+    { id:'2', username:'teacher', password:'123456', name:'张老师', role:'teacher', college:'医学院' }
+  ],
+  activeCaseTab: 'my',
+  exampleFilter: 'all'
+};
+
+// ===== STORAGE =====
+function saveState() {
+  const toSave = { history: state.history, userCases: state.userCases, schoolCases: state.schoolCases, userList: state.userList };
+  localStorage.setItem('wemoreai_state', JSON.stringify(toSave));
+}
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('wemoreai_state'));
+    if (saved) {
+      state.history = saved.history || [];
+      state.userCases = saved.userCases || [];
+      state.schoolCases = saved.schoolCases || [];
+      state.userList = saved.userList || state.userList;
+    }
+  } catch(e) {}
+}
+
+// ===== API =====
+async function generateExperiment(prompt, category, onChunk, onDone, onError) {
+  try {
+    const catInfo = CATEGORIES.find(c => c.id === category);
+    const categoryHint = catInfo ? `学科领域：${catInfo.name}。${catInfo.desc}。` : '';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'glm-4-flash',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `${categoryHint}\n\n用户需求：${prompt}\n\n请生成完整的单文件 HTML 虚拟仿真实验代码。` }
+        ],
+        stream: true
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      onError(err.error || `服务器错误 (${response.status})`);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+        const data = trimmed.slice(5).trim();
+        if (data === '[DONE]') {
+          onDone(extractCode(fullContent));
+          return;
+        }
+        try {
+          const json = JSON.parse(data);
+          const content = json.choices?.[0]?.delta?.content || '';
+          if (content) {
+            fullContent += content;
+            onChunk(fullContent);
+          }
+        } catch(e) {}
+      }
+    }
+
+    onDone(extractCode(fullContent));
+  } catch(err) {
+    if (err.name === 'AbortError') {
+      onError('生成超时，请重试或简化描述');
+    } else if (err.message?.includes('fetch')) {
+      onError('无法连接服务器，请刷新页面重试');
+    } else {
+      onError(err.message || '网络错误');
+    }
+  }
+}
+
+function extractCode(content) {
+  // Try ```html ... ```
+  let match = content.match(/```html\s*\n?([\s\S]*?)```/);
+  if (match) return match[1].trim();
+  // Try ``` ... ```
+  match = content.match(/```\s*\n?([\s\S]*?)```/);
+  if (match) return match[1].trim();
+  // Check if starts with HTML
+  const trimmed = content.trim();
+  if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<HTML')) return trimmed;
+  return trimmed;
+}
+
+// ===== RENDERING =====
+function renderPortalSubjects() {
+  const el = document.getElementById('portal-subjects');
+  el.innerHTML = CATEGORIES.map(cat => `
+    <div class="p-4 rounded-xl border border-slate-100 hover:border-indigo-100 hover:shadow-md transition-all cursor-default group">
+      <div class="text-2xl mb-2">${cat.icon}</div>
+      <h3 class="font-semibold text-sm text-slate-800 group-hover:text-indigo-600 transition-colors">${cat.name}</h3>
+      <p class="text-xs text-slate-400 mt-1 leading-relaxed">${cat.desc}</p>
+    </div>
+  `).join('');
+}
+
+function renderSidebar() {
+  const el = document.getElementById('sidebar-categories');
+  el.innerHTML = CATEGORIES.map(cat => `
+    <button onclick="selectCategory('${cat.id}')" class="sidebar-item w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm ${state.selectedCategory === cat.id ? 'active' : 'text-slate-600'}">
+      <span class="text-base">${cat.icon}</span>
+      <span class="truncate">${cat.name}</span>
+    </button>
+  `).join('');
+}
+
+function renderCategoryTags() {
+  const el = document.getElementById('category-tags');
+  el.innerHTML = `<span class="tag ${!state.selectedCategory ? 'active' : ''}" onclick="selectCategory(null)">全部</span>` +
+    CATEGORIES.map(cat => `<span class="tag ${state.selectedCategory === cat.id ? 'active' : ''}" onclick="selectCategory('${cat.id}')">${cat.icon} ${cat.name}</span>`).join('');
+}
+
+function renderQuickPrompts() {
+  const el = document.getElementById('quick-prompts');
+  const cat = state.selectedCategory || 'default';
+  const prompts = QUICK_PROMPTS[cat] || QUICK_PROMPTS.default;
+  el.innerHTML = prompts.map(p => `<span class="quick-prompt" onclick="useQuickPrompt('${p.replace(/'/g, "\\'")}')">${p.length > 20 ? p.slice(0,20) + '...' : p}</span>`).join('');
+}
+
+function renderExamples() {
+  // Filter
+  const filterEl = document.getElementById('examples-filter');
+  filterEl.innerHTML = `<span class="tag ${state.exampleFilter === 'all' ? 'active' : ''}" onclick="filterExamples('all')">全部</span>` +
+    CATEGORIES.map(cat => `<span class="tag ${state.exampleFilter === cat.id ? 'active' : ''}" onclick="filterExamples('${cat.id}')">${cat.icon} ${cat.name}</span>`).join('');
+
+  const filtered = state.exampleFilter === 'all' ? EXAMPLES : EXAMPLES.filter(e => e.category === state.exampleFilter);
+  const gridEl = document.getElementById('examples-grid');
+  gridEl.innerHTML = filtered.map(ex => {
+    const cat = CATEGORIES.find(c => c.id === ex.category);
+    return `
+      <div onclick="useExample('${ex.id}')" class="p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:shadow-md cursor-pointer transition-all group">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">${cat?.icon || '🔬'}</span>
+          <h4 class="font-medium text-sm text-slate-800 group-hover:text-indigo-600 transition-colors">${ex.title}</h4>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">${ex.desc}</p>
+        <span class="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-medium" style="background:${cat?.color}15;color:${cat?.color}">${cat?.name}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCaseLibrary() {
+  const listEl = document.getElementById('case-list');
+  const cases = state.activeCaseTab === 'my' ? state.userCases : state.schoolCases;
+
+  if (cases.length === 0) {
+    listEl.innerHTML = `
+      <div class="text-center py-12">
+        <div class="text-4xl mb-3">${state.activeCaseTab === 'my' ? '📋' : '🏫'}</div>
+        <p class="text-slate-400">${state.activeCaseTab === 'my' ? '暂无收藏案例' : '暂无学校案例'}</p>
+        <p class="text-slate-300 text-sm mt-1">${state.activeCaseTab === 'my' ? '生成实验后点击"收藏"保存' : '教师可申请将案例加入学校库'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = cases.map(c => {
+    const cat = CATEGORIES.find(cat => cat.id === c.category);
+    return `
+      <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:shadow-sm cursor-pointer transition-all mb-2" onclick="loadCase('${c.id}')">
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style="background:${cat?.color}15">${cat?.icon || '🔬'}</div>
+        <div class="flex-1 min-w-0">
+          <h4 class="font-medium text-sm text-slate-800 truncate">${c.title}</h4>
+          <p class="text-xs text-slate-400 truncate">${c.description}</p>
+        </div>
+        <span class="px-2 py-0.5 rounded text-[10px] font-medium flex-shrink-0" style="background:${cat?.color}15;color:${cat?.color}">${cat?.name}</span>
+        ${state.activeCaseTab === 'my' ? `<button onclick="event.stopPropagation();removeCase('${c.id}')" class="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (state.history.length === 0) {
+    el.innerHTML = `
+      <div class="text-center py-12">
+        <div class="text-4xl mb-3">🕐</div>
+        <p class="text-slate-400">暂无生成历史</p>
+      </div>
+    `;
+    return;
+  }
+  el.innerHTML = state.history.map(h => {
+    const cat = CATEGORIES.find(c => c.id === h.category);
+    return `
+      <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:shadow-sm cursor-pointer transition-all mb-2" onclick="loadHistory('${h.id}')">
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style="background:${cat?.color}15">${cat?.icon || '🔬'}</div>
+        <div class="flex-1 min-w-0">
+          <h4 class="font-medium text-sm text-slate-800 truncate">${h.title}</h4>
+          <p class="text-xs text-slate-400">${new Date(h.createdAt).toLocaleString()}</p>
+        </div>
+        <button onclick="event.stopPropagation();deleteHistory('${h.id}')" class="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderUserManagement() {
+  const el = document.getElementById('user-management-content');
+  el.innerHTML = `
+    <div class="mb-4">
+      <button onclick="showAddUserForm()" class="px-4 py-2 gradient-btn text-white rounded-xl text-sm font-medium flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        添加用户
+      </button>
+    </div>
+    <div id="add-user-form" class="hidden mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="text-xs font-medium text-slate-600 mb-1 block">用户名</label>
+          <input id="new-username" type="text" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-600 mb-1 block">密码</label>
+          <input id="new-password" type="text" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-600 mb-1 block">姓名</label>
+          <input id="new-name" type="text" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-600 mb-1 block">学院</label>
+          <input id="new-college" type="text" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-600 mb-1 block">角色</label>
+          <select id="new-role" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
+            <option value="teacher">教师</option>
+            <option value="admin">管理员</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="addUser()" class="px-4 py-2 gradient-btn text-white rounded-lg text-sm">确认添加</button>
+        <button onclick="document.getElementById('add-user-form').classList.add('hidden')" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600">取消</button>
+      </div>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200">
+          <th class="text-left py-2 px-3 text-xs font-medium text-slate-500">用户名</th>
+          <th class="text-left py-2 px-3 text-xs font-medium text-slate-500">姓名</th>
+          <th class="text-left py-2 px-3 text-xs font-medium text-slate-500">角色</th>
+          <th class="text-left py-2 px-3 text-xs font-medium text-slate-500">学院</th>
+          <th class="text-right py-2 px-3 text-xs font-medium text-slate-500">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${state.userList.map(u => `
+          <tr class="border-b border-slate-100 hover:bg-slate-50">
+            <td class="py-2.5 px-3 text-slate-700">${u.username}</td>
+            <td class="py-2.5 px-3 text-slate-700">${u.name}</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium ${u.role === 'admin' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}">${u.role === 'admin' ? '管理员' : '教师'}</span></td>
+            <td class="py-2.5 px-3 text-slate-500">${u.college}</td>
+            <td class="py-2.5 px-3 text-right">
+              ${u.username !== 'admin' ? `<button onclick="removeUser('${u.id}')" class="text-red-400 hover:text-red-600 text-xs">删除</button>` : '<span class="text-xs text-slate-300">-</span>'}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ===== ACTIONS =====
+function showLoginDialog() {
+  toggleDialog('login');
+}
+
+function toggleDialog(name) {
+  const el = document.getElementById(name + '-dialog');
+  if (!el) return;
+  el.classList.toggle('active');
+  if (el.classList.contains('active')) {
+    if (name === 'examples') renderExamples();
+    if (name === 'caseLibrary') renderCaseLibrary();
+    if (name === 'history') renderHistory();
+    if (name === 'userManagement') renderUserManagement();
+  }
+}
+
+function handleLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+
+  if (!username || !password) {
+    errorEl.textContent = '请输入用户名和密码';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  const user = state.userList.find(u => u.username === username && u.password === password);
+  if (!user) {
+    errorEl.textContent = '用户名或密码错误';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  errorEl.classList.add('hidden');
+  state.user = user;
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  toggleDialog('login');
+  enterApp();
+}
+
+function handleLogout() {
+  state.user = null;
+  state.currentExperiment = null;
+  document.getElementById('portal-page').classList.remove('hidden');
+  document.getElementById('app-page').classList.add('hidden');
+}
+
+function enterApp() {
+  document.getElementById('portal-page').classList.add('hidden');
+  document.getElementById('app-page').classList.remove('hidden');
+  document.getElementById('user-avatar').textContent = state.user.name[0];
+  document.getElementById('user-name-display').textContent = state.user.name;
+  if (state.user.role === 'admin') {
+    document.getElementById('admin-btn').classList.remove('hidden');
+    document.getElementById('admin-btn').style.display = 'flex';
+  } else {
+    document.getElementById('admin-btn').classList.add('hidden');
+  }
+  renderSidebar();
+  renderCategoryTags();
+  renderQuickPrompts();
+  showEmptyState();
+}
+
+function selectCategory(catId) {
+  state.selectedCategory = state.selectedCategory === catId ? null : catId;
+  renderSidebar();
+  renderCategoryTags();
+  renderQuickPrompts();
+}
+
+function useQuickPrompt(prompt) {
+  document.getElementById('prompt-input').value = prompt;
+  state.prompt = prompt;
+}
+
+function useExample(id) {
+  const ex = EXAMPLES.find(e => e.id === id);
+  if (!ex) return;
+  document.getElementById('prompt-input').value = ex.prompt;
+  state.prompt = ex.prompt;
+  state.selectedCategory = ex.category;
+  toggleDialog('examples');
+  renderSidebar();
+  renderCategoryTags();
+  renderQuickPrompts();
+}
+
+function filterExamples(catId) {
+  state.exampleFilter = catId;
+  renderExamples();
+}
+
+async function handleOptimizePrompt() {
+  const input = document.getElementById('prompt-input').value.trim();
+  if (!input) {
+    alert('请先输入实验描述');
+    return;
+  }
+  
+  const btn = document.getElementById('optimize-btn');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 优化中...`;
+  btn.disabled = true;
+  
+  try {
+    const catInfo = CATEGORIES.find(c => c.id === state.selectedCategory);
+    const categoryHint = catInfo ? `学科领域：${catInfo.name}。` : '';
+    
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'glm-4-flash',
+        messages: [
+          { role: 'system', content: '你是一个虚拟仿真实验设计专家。你的任务是将用户简单的实验描述扩展成一个详细、专业的实验设计提示词。包含：实验目的、具体功能需求、交互参数、可视化要求等。输出纯文本，不要markdown格式。' },
+          { role: 'user', content: `${categoryHint}用户想做的实验："${input}"\n\n请将其扩展成一个详细的实验设计提示词，用于生成完整的交互式虚拟仿真实验。要求具体、专业、可操作。` }
+        ],
+        stream: false
+      })
+    });
+    
+    if (!response.ok) throw new Error('优化失败');
+    
+    const data = await response.json();
+    const optimizedPrompt = data.choices?.[0]?.message?.content || '';
+    
+    if (optimizedPrompt) {
+      document.getElementById('optimized-prompt').value = optimizedPrompt;
+      document.getElementById('optimized-prompt-container').classList.remove('hidden');
+    }
+  } catch (err) {
+    alert('提示词优化失败：' + err.message);
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+function handleGenerate() {
+  // 优先使用优化后的提示词
+  const optimizedPrompt = document.getElementById('optimized-prompt').value.trim();
+  const inputPrompt = document.getElementById('prompt-input').value.trim();
+  const prompt = optimizedPrompt || inputPrompt;
+  
+  if (!prompt) return;
+  if (state.isGenerating) return;
+
+  state.isGenerating = true;
+  state.prompt = prompt;
+  updateGenerateButton(true);
+  showGeneratingState();
+
+  let chunkCount = 0;
+  generateExperiment(
+    prompt,
+    state.selectedCategory,
+    (content) => {
+      chunkCount++;
+      if (chunkCount % 5 === 0) {
+        document.getElementById('generating-status').textContent = `已接收 ${content.length} 字符...`;
+      }
+    },
+    (code) => {
+      state.isGenerating = false;
+      updateGenerateButton(false);
+      const experiment = {
+        id: Date.now().toString(),
+        title: extractTitle(prompt),
+        description: prompt.slice(0, 100),
+        code: code,
+        createdAt: new Date().toISOString(),
+        category: state.selectedCategory || 'physics'
+      };
+      state.currentExperiment = experiment;
+      state.history.unshift(experiment);
+      if (state.history.length > 50) state.history = state.history.slice(0, 50);
+      saveState();
+      showPreview(code);
+    },
+    (error) => {
+      state.isGenerating = false;
+      updateGenerateButton(false);
+      showEmptyState();
+      alert('生成失败: ' + error);
+    }
+  );
+}
+
+function extractTitle(prompt) {
+  // Try to extract a meaningful title from the prompt
+  const patterns = [
+    /(?:创建|模拟|展示|生成|设计)[一个]*(.{2,15}?)(?:仿真|实验|演示|系统|过程|模拟)/,
+    /(.{2,15}?)(?:仿真|实验|演示)/
+  ];
+  for (const p of patterns) {
+    const m = prompt.match(p);
+    if (m) return m[1].replace(/[，。、的]/g, '').trim();
+  }
+  return prompt.slice(0, 20) + (prompt.length > 20 ? '...' : '');
+}
+
+function updateGenerateButton(generating) {
+  const btn = document.getElementById('generate-btn');
+  if (generating) {
+    btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 生成中...`;
+    btn.disabled = true;
+    btn.classList.add('opacity-75');
+  } else {
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> 生成实验`;
+    btn.disabled = false;
+    btn.classList.remove('opacity-75');
+  }
+}
+
+function showEmptyState() {
+  document.getElementById('empty-state').classList.remove('hidden');
+  document.getElementById('generating-state').classList.add('hidden');
+  document.getElementById('preview-iframe').classList.add('hidden');
+  document.getElementById('code-view').classList.add('hidden');
+}
+
+function showGeneratingState() {
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('generating-state').classList.remove('hidden');
+  document.getElementById('preview-iframe').classList.add('hidden');
+  document.getElementById('code-view').classList.add('hidden');
+  document.getElementById('generating-status').textContent = '正在调用大模型...';
+}
+
+function showPreview(code) {
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('generating-state').classList.add('hidden');
+
+  if (state.previewMode === 'preview') {
+    const iframe = document.getElementById('preview-iframe');
+    iframe.classList.remove('hidden');
+    document.getElementById('code-view').classList.add('hidden');
+    iframe.srcdoc = code;
+  } else {
+    document.getElementById('preview-iframe').classList.add('hidden');
+    document.getElementById('code-view').classList.remove('hidden');
+    document.getElementById('code-content').textContent = code;
+  }
+}
+
+function setPreviewMode(mode) {
+  state.previewMode = mode;
+  document.getElementById('btn-preview').className = `px-3 py-1 text-xs font-medium rounded-lg transition-all ${mode === 'preview' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`;
+  document.getElementById('btn-code').className = `px-3 py-1 text-xs font-medium rounded-lg transition-all ${mode === 'code' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`;
+
+  if (state.currentExperiment) {
+    showPreview(state.currentExperiment.code);
+  }
+}
+
+function handleDownload() {
+  if (!state.currentExperiment) return;
+  const blob = new Blob([state.currentExperiment.code], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${state.currentExperiment.title}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function handleFullscreen() {
+  if (!state.currentExperiment) return;
+  const iframe = document.getElementById('preview-iframe');
+  if (iframe.requestFullscreen) iframe.requestFullscreen();
+  else if (iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
+}
+
+function handleSaveToCase() {
+  if (!state.currentExperiment) { alert('请先生成一个实验'); return; }
+  if (state.userCases.find(c => c.id === state.currentExperiment.id)) { alert('该实验已在案例库中'); return; }
+  state.userCases.unshift({ ...state.currentExperiment });
+  saveState();
+  alert('已保存到案例库');
+}
+
+function handleNewExperiment() {
+  state.currentExperiment = null;
+  document.getElementById('prompt-input').value = '';
+  document.getElementById('optimized-prompt').value = '';
+  document.getElementById('optimized-prompt-container').classList.add('hidden');
+  state.prompt = '';
+  showEmptyState();
+}
+
+function loadCase(id) {
+  const caseItem = [...state.userCases, ...state.schoolCases].find(c => c.id === id);
+  if (!caseItem || !caseItem.code) { alert('该案例无代码数据'); return; }
+  state.currentExperiment = caseItem;
+  toggleDialog('caseLibrary');
+  showPreview(caseItem.code);
+}
+
+function removeCase(id) {
+  state.userCases = state.userCases.filter(c => c.id !== id);
+  saveState();
+  renderCaseLibrary();
+}
+
+function loadHistory(id) {
+  const item = state.history.find(h => h.id === id);
+  if (!item) return;
+  state.currentExperiment = item;
+  toggleDialog('history');
+  showPreview(item.code);
+}
+
+function deleteHistory(id) {
+  state.history = state.history.filter(h => h.id !== id);
+  saveState();
+  renderHistory();
+}
+
+function clearHistory() {
+  if (!confirm('确定清空所有历史记录？')) return;
+  state.history = [];
+  saveState();
+  renderHistory();
+}
+
+function switchCaseTab(tab) {
+  state.activeCaseTab = tab;
+  document.getElementById('case-tab-my').className = `px-4 py-1.5 text-sm font-medium rounded-lg ${tab === 'my' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`;
+  document.getElementById('case-tab-school').className = `px-4 py-1.5 text-sm font-medium rounded-lg ${tab === 'school' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`;
+  renderCaseLibrary();
+}
+
+function showAddUserForm() {
+  document.getElementById('add-user-form').classList.remove('hidden');
+}
+
+function addUser() {
+  const username = document.getElementById('new-username').value.trim();
+  const password = document.getElementById('new-password').value.trim();
+  const name = document.getElementById('new-name').value.trim();
+  const college = document.getElementById('new-college').value.trim();
+  const role = document.getElementById('new-role').value;
+
+  if (!username || !password || !name) { alert('请填写完整信息'); return; }
+  if (state.userList.find(u => u.username === username)) { alert('用户名已存在'); return; }
+
+  state.userList.push({ id: Date.now().toString(), username, password, name, role, college });
+  saveState();
+  renderUserManagement();
+  document.getElementById('add-user-form').classList.add('hidden');
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-password').value = '';
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-college').value = '';
+}
+
+function removeUser(id) {
+  if (!confirm('确定删除该用户？')) return;
+  state.userList = state.userList.filter(u => u.id !== id);
+  saveState();
+  renderUserManagement();
+}
+
+// ===== INIT =====
+function init() {
+  loadState();
+  renderPortalSubjects();
+}
+
+init();
+</script>
+</body>
+</html>
