@@ -1,22 +1,15 @@
-process.on('uncaughtException', (err) => { console.error('UNCAUGHT:', err.message); });
-process.on('unhandledRejection', (err) => { console.error('UNHANDLED:', err); });
-
-const express = require('express');
-const path = require('path');
 const https = require('https');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || '86008ef6d11a42328873bcb5646ce071.z7Kqc6VLVk1gfbSb';
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.static(__dirname));
-
-app.post('/api/chat', (req, res) => {
   try {
     const { model, messages, stream } = req.body;
     const isStream = stream !== false;
+
+    const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || '86008ef6d11a42328873bcb5646ce071.z7Kqc6VLVk1gfbSb';
 
     const postData = JSON.stringify({
       model: model || 'glm-4-flash',
@@ -72,14 +65,4 @@ app.post('/api/chat', (req, res) => {
     console.error('Server error:', e.message);
     if (!res.headersSent) res.status(500).json({ error: e.message });
   }
-});
-
-if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 WeMoreAI 智能虚拟实验生成平台`);
-    console.log(`   本地访问: http://localhost:${PORT}`);
-    console.log(`   按 Ctrl+C 停止服务\n`);
-  });
-}
-
-module.exports = app;
+};
