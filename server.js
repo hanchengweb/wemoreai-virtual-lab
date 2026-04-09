@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || '86008ef6d11a42328873bcb5646ce071.z7Kqc6VLVk1gfbSb';
 
 app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/chat', (req, res) => {
   try {
